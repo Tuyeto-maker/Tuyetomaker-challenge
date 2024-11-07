@@ -1,0 +1,102 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Patient {
+  id        String   @id @default(uuid())
+  name      String
+  email     String   @unique
+  password  String
+  phone     String?
+  birthDate DateTime
+
+  appointments Appointment[]
+
+  UserToken UserToken[]
+}
+
+model UserToken {
+  id        String    @id @default(uuid())
+  patientId String
+  token     String    @unique
+  expiresAt DateTime? // Opcional, para tokens que expiram
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  // Relacionamento com o modelo Patient
+  patient Patient @relation(fields: [patientId], references: [id])
+
+  @@index([patientId]) // Índice para buscas por paciente
+}
+
+model Doctor {
+  id             String            @id @default(uuid())
+  name           String
+  email          String            @unique
+  password       String
+  role           Role              @default(DOCTOR)
+  permissions    String[]
+  specialties    DoctorSpecialty[]
+  availableTimes AvailableTime[]
+
+  appointments Appointment[]
+}
+
+model Specialty {
+  id      String            @id @default(uuid())
+  name    String            @unique
+  doctors DoctorSpecialty[]
+}
+
+model AvailableTime {
+  id       String @id @default(uuid())
+  day      String
+  start    String
+  end      String
+  doctorId String
+  doctor   Doctor @relation(fields: [doctorId], references: [id])
+}
+
+model Appointment {
+  id            String            @id @default(uuid())
+  patientId     String
+  doctorId      String
+  specialty     String
+  date          DateTime          @default(now())
+  time          String
+  status        AppointmentStatus @default(PENDING)
+  rescheduledAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  patient Patient @relation(fields: [patientId], references: [id])
+  doctor  Doctor  @relation(fields: [doctorId], references: [id])
+}
+
+model DoctorSpecialty {
+  doctorId    String
+  specialtyId String
+
+  doctor    Doctor    @relation(fields: [doctorId], references: [id])
+  specialty Specialty @relation(fields: [specialtyId], references: [id])
+
+  @@id([doctorId, specialtyId])
+}
+
+enum AppointmentStatus {
+  PENDING
+  CONFIRMED
+  CANCELED
+  RESCHEDULED
+}
+
+enum Role {
+  DOCTOR
+  ADMIN
+}
